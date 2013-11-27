@@ -1,5 +1,5 @@
 class TreeNode
-  attr_accessor :children, :parent, :value, :start_point, :end_point, :displacement
+  attr_accessor :children, :parent, :value, :start_point, :end_point, :displacement, :energy
   
   def initialize(start_point, end_point, value)
     @start_point = start_point

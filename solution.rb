@@ -88,7 +88,9 @@ end
 
 
 if __FILE__ == $PROGRAM_NAME
+  start_time = Time.now
   a1 = AngryBirdFlight.new
-  # find shortest path
+
   p a1.shortest_path
+  p (Time.now - start_time) * 1000
 end
