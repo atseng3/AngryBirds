@@ -5,7 +5,7 @@ class Vertex
     @constant_energy = constant_energy
     @pos = pos
     @in_edges = in_edges || []
-    @best_path = [pos - 1, pos]
+    @best_path = [[pos - 1, pos]]
     @best_cost = pos * constant_energy
     @best_edge = nil
   end
@@ -17,16 +17,22 @@ class Vertex
         if current_cost < @best_cost
           @best_cost = current_cost
           @best_path = [edge.from_vertex.pos, pos]
+          @best_edge = edge
         end
-        @best_edge = edge
       end
     end
+    @best_edge = @in_edges.first.first if @best_edge.nil?
+    update_best_path
   end
   
   def update_best_path
-    previous_edge = @best_edge.bes_edge
-    until previous_edge.nil?
-      @best_path << [previous_edge.from_vertex.pos, pos]
+    previous_vertex = @best_edge.from_vertex
+    until previous_vertex.pos == 0
+      previous_edge = previous_vertex.best_edge
+      if previous_edge.value != @constant_energy
+        @best_path.unshift([previous_edge.from_vertex.pos, previous_vertex.pos])
+      end
+      previous_vertex = previous_edge.from_vertex
     end
   end
 end
