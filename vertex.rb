@@ -5,7 +5,7 @@ class Vertex
     @constant_energy = constant_energy
     @pos = pos
     @in_edges = in_edges || []
-    @best_path = [[pos - 1, pos]]
+    @best_path = [[@pos - 1, @pos]]
     @best_cost = pos * constant_energy
     @best_edge = nil
   end
@@ -16,7 +16,7 @@ class Vertex
         current_cost = edge.value + edge.from_vertex.best_cost
         if current_cost < @best_cost
           @best_cost = current_cost
-          @best_path = [edge.from_vertex.pos, pos]
+          @best_path = [[edge.from_vertex.pos, pos]]
           @best_edge = edge
         end
       end

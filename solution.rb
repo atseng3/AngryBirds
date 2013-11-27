@@ -92,5 +92,5 @@ if __FILE__ == $PROGRAM_NAME
   a1 = AngryBirdFlight.new
 
   p a1.shortest_path
-  p (Time.now - start_time) * 1000
+  p "Run time: " + ((Time.now - start_time) * 1000).to_s
 end
