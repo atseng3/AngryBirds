@@ -1,96 +1,110 @@
-require_relative 'tree_node'
+require 'debugger'
+require_relative 'vertex'
+require_relative 'edge'
 
 class AngryBirdFlight
+  attr_accessor :vertices, :stream_hash
   
   def initialize
-    @all_streams = [TreeNode.new(0, 0, 0)]
+    @vertices = []
     @jetstreams = File.readlines("jetstreams.txt")
     @constant_energy = @jetstreams.shift.chomp.to_i
-    @dest = 0
-    @end_nodes = []
-    make_nodes
-    build_tree
-  end
-  
-  # bfs
-  def shortest_path
-    minimum = @dest * @constant_energy
-    final_path = []
-    @end_nodes.each do |end_node|
-      # sum = 0 if end_node is 24
-      # sum = (24 - 22) * 50 if end_node is 22 (or other num)
-      sum = end_node.end_point == @dest ? 0 : (@dest - end_node.end_point) * @constant_energy
 
-      nodes = []
-      current_node = end_node
-      until current_node.parent.nil?
-        sum = sum + current_node.value + current_node.displacement
-        nodes.unshift([current_node.start_point, current_node.end_point])
-        current_node = current_node.parent
-      end
-      
-      if sum < minimum
-        minimum = sum
-        final_path = nodes
-      end
-    end
-    [minimum, final_path]
+    # two methods to build a Directed Acyclic Graph with vertices(each possible end point)
+    # and edges(each stream and each flight path).
+    parse
+    add_default_edges
   end
   
-  # create nodes out of each stream. 
-  def make_nodes
+  def parse
+    vertices = {}
+    
+    # stores a hash of position, cost, previous vertex, and best_edge_type to a vertex.
+    vertices[0] = Vertex.new({ pos: 0, cost: 0, prev: nil, edge: nil })
+
     @jetstreams.each do |stream|
-      each_stream = stream.chomp.split(" ")
-      
-      start_point = each_stream.shift.to_i
-      end_point = each_stream.shift.to_i
-      value = each_stream.shift.to_i
-    
-      @dest = end_point if end_point > @dest
-    
-      @all_streams << TreeNode.new(start_point, end_point, value)
+      start_val, end_val, edge_cost = stream.split(" ")
+
+      vertices[start_val.to_i] ||= Vertex.new({ pos: start_val.to_i })
+      vertices[end_val.to_i] ||= Vertex.new({ pos: end_val.to_i })
+
+      Edge.new(vertices[start_val.to_i], vertices[end_val.to_i], edge_cost.to_i, "jet")
     end
+    
+    # stores the resulting sorted vertices in @vertices as an array
+    @vertices = vertices.values.sort_by { |vertex| vertex.value[:pos] }
   end
   
-  # bfs
-  def build_tree
-    nodes = [@all_streams.first]
-    until nodes.empty?
-      current_node = nodes.shift
-      
-      current_start_point = current_node.start_point
-      current_end_point = current_node.end_point
-      
-      children = valid_children(current_start_point, current_end_point)
-      # detect and store an end_node
-      @end_nodes << current_node if children.empty?
-      
-      children.each do |child|
-        next_node = TreeNode.new(child.start_point, child.end_point, child.value)
-        current_node.add_child(next_node)
-        next_node.displacement = (next_node.start_point - current_node.end_point) * @constant_energy
-        
-        nodes << next_node
-      end
+  # adds default edges to each vertex 
+  
+  def add_default_edges
+    @vertices.each_index do |i|
+      next if i == @vertices.length - 1
+      from = @vertices[i]
+      to = @vertices[i + 1]
+      distance = (to.value[:pos] - from.value[:pos])
+      Edge.new(from, to, @constant_energy * distance, "default")
     end
+    @vertices
   end
   
-  def valid_children(start_point, end_point)
-    children = []
-    @all_streams.each do |child|
-      if !(start_point == child.start_point && end_point == child.end_point) && (child.start_point >= end_point)
-        children << child
+  # iterates through each possible end point and calculates best cost.
+  
+  def calc_costs
+    start_vertex, end_vertex = @vertices.first, @vertices.last
+  
+    @vertices.each do |vertex|
+      best_cost = nil
+      best_prev = nil
+      best_edge_type = nil
+
+      vertex.in_edges.each do |in_edge|
+        prev_vertex = in_edge.out_vertex
+        prev_cost = prev_vertex.value[:cost]
+
+        next if prev_cost.nil?
+
+        current_cost = prev_cost + in_edge.value
+
+        if best_cost.nil? || current_cost < best_cost
+          best_cost = current_cost
+          best_prev = prev_vertex
+          best_edge_type = in_edge.type
+        end
+      end
+    
+      if vertex.value[:pos] != 0
+        vertex.value[:cost] = best_cost
+        vertex.value[:prev] = best_prev
+        vertex.value[:edge] = best_edge_type
       end
     end
-    children
+
+    nil
+  end
+  
+  # traverses backwards from the last vertex to find the total path.
+  
+  def best_path
+    path = []
+
+    vertex = @vertices.last
+    until vertex.value[:pos] == 0
+      prev_vertex = vertex.value[:prev]
+      path.unshift([prev_vertex.value[:pos], vertex.value[:pos]]) if vertex.value[:edge] == "jet"
+      vertex = prev_vertex
+    end
+
+    path
   end
 end
-
 
 if __FILE__ == $PROGRAM_NAME
   start_time = Time.now
   a1 = AngryBirdFlight.new
-
-  p a1.shortest_path
-  p "Run time: " + ((Time.now - start_time) * 1000).to_s
+  a1.calc_costs
+  dest_cost = a1.vertices.last.value[:cost]
+  best_path = a1.best_path
+  p [dest_cost, best_path]
+  # p "Run time: " + ((Time.now - start_time) * 1000000).to_s
 end
